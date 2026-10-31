@@ -1,18 +1,18 @@
 {
-  "name": "discord-rules-bot",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "ds-herade-rules",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Discord rules publisher for HERADE HOUSE 2.0",
+  "main": "bot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node bot.js",
+    "deploy:commands": "node deploy-commands.js",
+    "test": "node --check bot.js && node --check deploy-commands.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "engines": { "node": ">=20.18.1" },
   "dependencies": {
     "discord.js": "^14.27.0",
     "dotenv": "^18.0.9",
-    "global-agent": "^4.1.6",
     "undici": "^7.30.1"
   }
 }
