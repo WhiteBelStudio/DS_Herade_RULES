@@ -16,7 +16,13 @@ Discord.js bot that publishes the HERADE HOUSE 2.0 server rules with `/rules`.
 `ALLOWED_ROLE_IDS` is a comma-separated list. The bot needs View Channel, Send Messages, and Embed Links in the channel where `/rules` is used. `HTTP_PROXY` is optional; leave it empty for a direct connection.
 
 ## Pterodactyl
-Use a Node.js 22 egg and set the startup command to `npm start`. Keep `.env` safe during source updates. Download the GitHub `main` archive, restore `.env`, run `npm ci`, then register commands and start the bot.
+Use a Node.js 22 egg. Keep the `.env` file in `/home/container` (it is not part of the Git repository). Set the Pterodactyl Startup Command to:
+
+```bash
+cd /home/container && curl -fsSL https://github.com/WhiteBelStudio/DS_Herade_RULES/archive/refs/heads/main.tar.gz -o /tmp/ds-herade-rules.tar.gz && tar -xzf /tmp/ds-herade-rules.tar.gz --strip-components=1 -C /home/container && rm /tmp/ds-herade-rules.tar.gz && npm ci && npm run deploy:commands && npm start
+```
+
+This downloads the latest `main` source on every start, preserves `.env`, installs the locked dependencies, registers the guild slash command, and starts the bot. Make sure `.env` exists before starting. The command requires `curl` and `tar` in the container.
 
 ## Checks
 `npm test` runs Node.js syntax checks for `bot.js` and `deploy-commands.js`.
