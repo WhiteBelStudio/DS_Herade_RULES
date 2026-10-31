@@ -1,23 +1,20 @@
 require('dotenv').config();
-const { bootstrap } = require('global-agent');
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
 
-// Настройка прокси для обхода блокировок WSL
-const PROXY_URL = process.env.HTTP_PROXY || 'http://127.0.0.1:3067';
-process.env.GLOBAL_AGENT_HTTP_PROXY = PROXY_URL;
-process.env.GLOBAL_AGENT_HTTPS_PROXY = PROXY_URL;
-bootstrap();
-
-const { setGlobalDispatcher, ProxyAgent } = require('undici');
-try {
-  setGlobalDispatcher(new ProxyAgent(PROXY_URL));
-} catch (e) {
-  console.log('⚠️ Ошибка установки прокси в undici, идем напрямую...');
+function requiredEnv(name) {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
 }
 
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const token = requiredEnv('DISCORD_TOKEN');
+const allowedRoleIds = (process.env.ALLOWED_ROLE_IDS || '')
+  .split(',')
+  .map(value => value.trim())
+  .filter(Boolean);
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  intents: [GatewayIntentBits.Guilds]
 });
 
 const RULES = {
@@ -66,73 +63,97 @@ function buildEmbeds(sectionId) {
   if (!data) return [];
 
   const embeds = [];
-  let currentEmbed = new EmbedBuilder()
-    .setColor(0x2b2d31)
-    .setAuthor({ name: 'Правила | HERADE HOUSE 2.0', iconURL: client.user.displayAvatarURL() })
-    .setTitle(`${data.icon} ${data.title}`)
-    .setDescription(`**${data.desc}**`);
-
+  let currentEmbed = createEmbed(data, false);
   let fieldCount = 0;
+  let textLength = (data.title.length + data.desc.length + 100);
 
-  data.points.forEach(p => {
-    if (fieldCount + 4 > 25) {
-      embeds.push(currentEmbed);
-      currentEmbed = new EmbedBuilder()
-        .setColor(0x2b2d31)
-        .setTitle(`${data.icon} ${data.title} (продолжение)`);
-      fieldCount = 0;
-    }
-
-    currentEmbed.addFields(
-      { name: `\u200b\n🔹 **${p.name}**`, value: `\`\`\`${p.rule}\`\`\`` },
-      { name: 'Наказание:', value: `> **${p.punish}**`, inline: true },
-      { name: 'Длительность:', value: `> **${p.duration}**`, inline: true },
+  for (const point of data.points) {
+    const fields = [
+      { name: `\u200b\n🔹 **${point.name}**`, value: `\`\`\`\n${point.rule}\n\`\`\`` },
+      { name: 'Наказание:', value: `> **${point.punish}**`, inline: true },
+      { name: 'Длительность:', value: `> **${point.duration}**`, inline: true },
       { name: '\u200b', value: '\u200b', inline: true }
-    );
-    fieldCount += 4;
-  });
-
+    ];
+    const addedLength = fields.reduce((sum, field) => sum + field.name.length + field.value.length, 0);
+    if (fieldCount + fields.length > 25 || textLength + addedLength > 5800) {
+      embeds.push(currentEmbed);
+      currentEmbed = createEmbed(data, true);
+      fieldCount = 0;
+      textLength = data.title.length + 100;
+    }
+    currentEmbed.addFields(fields);
+    fieldCount += fields.length;
+    textLength += addedLength;
+  }
   embeds.push(currentEmbed);
   return embeds;
 }
 
-client.once('clientReady', () => console.log(`✅ Бот ${client.user.tag} запущен!`));
+function createEmbed(data, continuation) {
+  const embed = new EmbedBuilder()
+    .setColor(0x2b2d31)
+    .setAuthor({ name: 'Правила | HERADE HOUSE 2.0', iconURL: client.user?.displayAvatarURL() })
+    .setTitle(`${data.icon} ${data.title}`);
+  if (!continuation) embed.setDescription(`**${data.desc}**`);
+  else embed.setFooter({ text: 'Продолжение раздела' });
+  return embed;
+}
 
-client.on('interactionCreate', async i => {
-  if (i.isChatInputCommand() && i.commandName === 'rules') {
-    
-    // Проверка ролей: разрешены только "HEAD MODERATOR" и "NUGZAR"
-    // ВАЖНО: Названия ролей должны совпадать с теми, что на сервере, включая регистр.
-    const allowedRoles = ['HEAD MODERATOR', 'NUGZAR'];
-    const hasRole = i.member.roles.cache.some(role => allowedRoles.includes(role.name));
+client.once('clientReady', () => {
+  console.log(`✅ Бот ${client.user.tag} запущен`);
+});
 
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand() || interaction.commandName !== 'rules') return;
+
+  try {
+    if (!interaction.inGuild()) {
+      await interaction.reply({ content: 'Команда доступна только на сервере.', ephemeral: true });
+      return;
+    }
+
+    const member = await interaction.guild.members.fetch(interaction.user.id);
+    const hasRole = allowedRoleIds.length > 0 && member.roles.cache.some(role => allowedRoleIds.includes(role.id));
     if (!hasRole) {
-      return i.reply({ 
-        content: '⛔ У вас нет прав для использования этой команды. Доступно только @HEAD MODERATOR и @NUGZAR.', 
-        ephemeral: true 
-      });
-    }
-    
-    const chapter = i.options.getInteger('глава');
-    const embeds = buildEmbeds(chapter);
-
-    if (embeds.length === 0) {
-      return i.reply({ content: '❌ Раздел не найден.', ephemeral: true });
+      await interaction.reply({ content: '⛔ У вас нет прав для использования этой команды.', ephemeral: true });
+      return;
     }
 
-    // Скрыто подтверждаем нажатие
-    await i.deferReply({ ephemeral: true }); 
-    
-    // Отправляем правила прямо в канал, чтобы они остались в истории
-    await i.channel.send({ embeds: [embeds[0]] });
-    
-    for (let j = 1; j < embeds.length; j++) {
-      await i.channel.send({ embeds: [embeds[j]] });
+    const channel = interaction.channel;
+    if (!channel || !channel.isTextBased() || !channel.send) {
+      await interaction.reply({ content: '❌ Не удалось определить текстовый канал для публикации.', ephemeral: true });
+      return;
     }
 
-    // Удаляем скрытое сообщение "думает..."
-    await i.deleteReply().catch(() => {});
+    const botMember = interaction.guild.members.me;
+    if (!botMember || !channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.SendMessages) ||
+        !channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.EmbedLinks)) {
+      await interaction.reply({ content: '❌ У бота нет прав отправлять сообщения и Embed в этом канале.', ephemeral: true });
+      return;
+    }
+
+    const section = interaction.options.getInteger('глава');
+    const embeds = buildEmbeds(section);
+    if (!embeds.length) {
+      await interaction.reply({ content: '❌ Раздел не найден.', ephemeral: true });
+      return;
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+    for (const embed of embeds) await channel.send({ embeds: [embed] });
+    await interaction.deleteReply().catch(() => {});
+  } catch (error) {
+    console.error('Ошибка обработки /rules:', error);
+    const message = '❌ Не удалось опубликовать правила. Проверьте права бота и логи.';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp({ content: message, ephemeral: true }).catch(() => {});
+    } else {
+      await interaction.reply({ content: message, ephemeral: true }).catch(() => {});
+    }
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(token).catch(error => {
+  console.error('Не удалось подключить бота к Discord:', error);
+  process.exitCode = 1;
+});
