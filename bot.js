@@ -1,9 +1,15 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  PermissionsBitField,
+  ChannelType,
+} = require('discord.js');
 
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
-  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  if (!value) throw new Error(\`Missing required environment variable: \${name}\`);
   return value;
 }
 
@@ -13,94 +19,141 @@ const allowedRoleIds = (process.env.ALLOWED_ROLE_IDS || '')
   .map(value => value.trim())
   .filter(Boolean);
 
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 const RULES = {
   1: {
-    title: 'РАЗДЕЛ 1 — ОБЩИЕ ПРАВИЛА',
+    title: 'РАЗДЕЛ I. ОБЩИЕ ПРАВИЛА',
     icon: '📜',
     desc: 'Основные правила поведения на сервере HERADE HOUSE 2.0. Незнание правил не освобождает от ответственности.',
     points: [
-      { name: 'Пункт 1.1', rule: 'Запрещено использование ненормативной лексики в чрезмерном или оскорбительном виде для других пользователей.', punish: 'Пред/Мут.', duration: 'до 2 часов | 3 дней.' },
-      { name: 'Пункт 1.2', rule: 'Запрещён расизм, нацизм, дискриминация, унижение людей по национальности, цвету кожи, вероисповеданию.\nЗапрещены нацистские лозунги, символика, ники, аватарки, шутки и любые упоминания связанные с 1488, свастикой, Hitler, Nazi, ZOV, СВО.', punish: 'Мут/Бан.', duration: 'до 10 часов | 2 недели | Смена ника | Бан 3 дня.' },
-      { name: 'Пункт 1.3', rule: 'Запрещена публикация материалов насильственного характера, жестокости, суицида, шок-контента.\nЗапрещён 18+ контент, NSFW-аватарки, баннеры и ссылки на подобные материалы.', punish: 'Мут/Бан.', duration: 'до 5 часов | 1 недели | Бан навсегда.' },
-      { name: 'Пункт 1.4', rule: 'Запрещены ники, которые могут оскорбить других пользователей.\nЗапрещается использование в никах адресов сайтов, ссылок, рекламы.\nЗапрещено копирование профиля администрации.', punish: 'Мут/Бан.', duration: 'до 3 часов | 1 недели | Смена ника | Бан 7 дней.' },
-      { name: 'Пункт 1.5', rule: 'Запрещено распространение личной информации пользователей без их разрешения.\nЗапрещены угрозы сватом, минированием, деаноном, родителями и иными методами давления.', punish: 'Бан.', duration: 'Навсегда.' },
-      { name: 'Пункт 1.6', rule: 'Запрещена реклама сторонних Discord-серверов, проектов и сообществ.\nЗапрещена скрытая реклама через статус, ник, ссылки, демонстрацию экрана.', punish: 'Мут/Бан.', duration: 'до 5 часов | 1 недели | Бан навсегда.' },
-      { name: 'Пункт 1.7', rule: 'Запрещён скам, обман, мошенничество и любые махинации.\nЗапрещено выдавать себя за другого человека, администрацию или медийную личность.', punish: 'Мут/Бан.', duration: 'до 2 недели | Бан навсегда' },
-      { name: 'Пункт 1.8', rule: 'Запрещено намеренное создание конфликтов между участниками сервера.', punish: 'Пред/Мут.', duration: 'до 6 часов | 5 дней.' },
-      { name: 'Пункт 1.9', rule: 'Запрещён обход правил и поиск лазеек в правилах сервера.', punish: 'На усмотрение администрации.', duration: '—' },
-      { name: 'Пункт 1.10', rule: 'Запрещены рейды сервера, массовый флуд и действия направленные на нарушение работы сервера.', punish: 'Бан.', duration: 'Навсегда.' },
-      { name: 'Пункт 1.11', rule: 'Запрещено использование твинк-аккаунтов (фейков) для обхода бана или мута.', punish: 'Бан.', duration: 'Навсегда (основной и твинк).' }
-    ]
+      { id: '1.1', rule: 'Запрещены прямые оскорбления, чрезмерная ненормативная лексика и унижение участников.', punish: 'Пред / Мут', duration: 'Предупреждение; до 2 часов; до 12 часов при повторении.' },
+      { id: '1.2', rule: 'Запрещены расизм, нацизм, ксенофобия, разжигание ненависти, дискриминация и соответствующая пропаганда.', punish: 'Мут / Бан', duration: 'До 24 часов; до 7 дней; навсегда при тяжёлых или повторных нарушениях.' },
+      { id: '1.3', rule: 'Запрещено размещать материалы сексуального характера, шок-контент, сцены жестокости и материалы, пропагандирующие насилие.', punish: 'Мут / Бан', duration: 'До 12 часов; до 7 дней; навсегда при особо тяжёлых нарушениях.' },
+      { id: '1.4', rule: 'Запрещены оскорбительные ники, аватары, статусы и оформление, имитирующее администрацию.', punish: 'Пред / Смена ника / Мут', duration: 'Требование сменить оформление; до 2 часов при отказе.' },
+      { id: '1.5', rule: 'Запрещено публиковать персональные данные, личные фотографии и переписки без согласия владельца.', punish: 'Бан', duration: 'От 7 дней до бессрочной блокировки в зависимости от тяжести нарушения.' },
+      { id: '1.6', rule: 'Запрещены угрозы, запугивание, шантаж, угрозы деанонимизации и давление на участников.', punish: 'Бан', duration: 'От 7 дней до навсегда.' },
+      { id: '1.7', rule: 'Запрещена реклама серверов, сообществ, проектов и услуг без разрешения администрации.', punish: 'Пред / Мут / Бан', duration: 'Предупреждение; до 6 часов; до 3 дней при повторении.' },
+      { id: '1.8', rule: 'Запрещены скам, фишинг, мошеннические схемы и выдача себя за администрацию или другого участника.', punish: 'Мут / Бан', duration: 'До 24 часов; от 7 дней до навсегда в зависимости от ущерба.' },
+      { id: '1.9', rule: 'Запрещено намеренно провоцировать ссоры, разжигать конфликты и преследовать участников.', punish: 'Пред / Мут', duration: 'Предупреждение; до 6 часов; до 24 часов при повторении.' },
+      { id: '1.10', rule: 'Запрещено использовать дополнительные аккаунты для обхода блокировок и ограничений.', punish: 'Бан', duration: 'До 7 дней; навсегда при повторном или намеренном обходе.' },
+      { id: '1.11', rule: 'Запрещены рейды, массовые рассылки, флуд и намеренное нарушение работы сервера.', punish: 'Бан', duration: 'От 7 дней до навсегда.' },
+    ],
   },
   2: {
-    title: 'РАЗДЕЛ 2 — ЧАТ И ГОЛОСОВЫЕ КАНАЛЫ',
+    title: 'РАЗДЕЛ II. ТЕКСТОВЫЕ И ГОЛОСОВЫЕ КАНАЛЫ',
     icon: '💬',
     desc: 'Правила общения в текстовых и голосовых каналах для комфортной атмосферы.',
     points: [
-      { name: 'Пункт 2.1', rule: 'Запрещено включать музыку, шумы, звуки и соундпад без согласия участников канала.\nЗапрещены слишком громкие, резкие или мешающие общению звуки.', punish: 'Пред/Мут.', duration: 'до 2 часов.' },
-      { name: 'Пункт 2.2', rule: 'Запрещено мешать общению в голосовом канале: крики, перебивание, эхо, намеренное ухудшение качества общения.', punish: 'Пред/Мут.', duration: 'до 4 часов.' },
-      { name: 'Пункт 2.3', rule: 'Запрещено использование программ изменения голоса в целях обмана или помех общению.', punish: 'Пред/Мут.', duration: 'до 4 часов.' },
-      { name: 'Пункт 2.4', rule: 'Запрещено использование багов или уязвимостей Discord, а также распространение способов их использования.', punish: 'Пред/Бан.', duration: 'до 7 дней.' }
-    ]
+      { id: '2.1', rule: 'Запрещено отправлять большое количество однотипных сообщений, символов и бессмысленного контента.', punish: 'Пред / Мут', duration: 'Предупреждение; до 2 часов; до 6 часов при повторении.' },
+      { id: '2.2', rule: 'Запрещено без причины массово упоминать пользователей, роли и администрацию.', punish: 'Пред / Мут', duration: 'Предупреждение; до 3 часов; до 12 часов при повторении.' },
+      { id: '2.3', rule: 'Запрещено намеренно засорять чат сообщениями исключительно заглавными буквами, символами и чрезмерным форматированием.', punish: 'Пред / Мут', duration: 'Предупреждение; до 1 часа; до 3 часов при повторении.' },
+      { id: '2.4', rule: 'Необходимо соблюдать назначение каждого текстового и голосового канала.', punish: 'Пред / Мут', duration: 'Предупреждение; до 2 часов; до 6 часов при повторении.' },
+      { id: '2.5', rule: 'Запрещены намеренные крики, перебивание, постоянное создание эха и другие действия, мешающие общению.', punish: 'Пред / Мут', duration: 'Предупреждение; до 2 часов; до 6 часов при повторении.' },
+      { id: '2.6', rule: 'Запрещено включать громкие звуки, музыку и Soundboard без согласия участников голосового канала.', punish: 'Пред / Мут', duration: 'Предупреждение; до 2 часов; до 6 часов при повторении.' },
+      { id: '2.7', rule: 'Запрещено намеренно создавать постоянные звуковые помехи и мешать общению.', punish: 'Пред / Мут', duration: 'Предупреждение; до 3 часов; до 12 часов при повторении.' },
+      { id: '2.8', rule: 'Запрещено превращать каналы сервера в площадку для личных разбирательств.', punish: 'Пред / Мут', duration: 'Предупреждение; до 3 часов; до 12 часов при повторении.' },
+    ],
   },
   3: {
-    title: 'РАЗДЕЛ 3 — ПОВЕДЕНИЕ В ИГРАХ',
+    title: 'РАЗДЕЛ III. ИГРЫ И СОВМЕСТНЫЙ ДОСУГ',
     icon: '🎮',
-    desc: 'Данный раздел устанавливает правила поведения участников во время совместной игры. Они направлены на поддержание честной игры и комфортной атмосферы.',
+    desc: 'Правила поведения участников во время совместной игры и мероприятий.',
     points: [
-      { name: 'Пункт 3.1', rule: 'Запрещено использование / распространение | читов, макросов, скриптов и других запрещённых программ.', punish: 'Бан.', duration: 'до 7 дней | Навсегда.' },
-      { name: 'Пункт 3.2', rule: 'Запрещено использование игровых багов для получения преимущества над другими игроками.', punish: 'Пред/Бан.', duration: 'до 7 дней.' }
-    ]
-  }
+      { id: '3.1', rule: 'Запрещено использование читов, запрещённых программ и нечестных способов получения преимущества в совместных игровых мероприятиях.', punish: 'Бан', duration: 'До 7 дней; навсегда при повторном нарушении.' },
+      { id: '3.2', rule: 'Запрещено намеренно использовать игровые уязвимости для получения несправедливого преимущества.', punish: 'Пред / Бан', duration: 'Предупреждение; до 7 дней; до 30 дней при повторении.' },
+      { id: '3.3', rule: 'Запрещены намеренная порча игры, срыв мероприятий и действия против собственной команды.', punish: 'Пред / Мут / Бан', duration: 'Предупреждение; до 6 часов; до 3 дней при повторении.' },
+      { id: '3.4', rule: 'Запрещены унижение, травля и намеренные провокации во время совместных игровых сессий.', punish: 'Пред / Мут', duration: 'Предупреждение; до 3 часов; до 12 часов при повторении.' },
+    ],
+  },
+  4: {
+    title: 'РАЗДЕЛ IV. АДМИНИСТРАЦИЯ И МОДЕРАЦИЯ',
+    icon: '🛡️',
+    desc: 'Правила взаимодействия с администрацией, модерацией и службой поддержки.',
+    points: [
+      { id: '4.1', rule: 'Запрещены угрозы, травля и оскорбления администрации в связи с выполнением её обязанностей.', punish: 'Пред / Мут / Бан', duration: 'Предупреждение; до 12 часов; до 3 дней при повторении.' },
+      { id: '4.2', rule: 'Запрещено намеренно препятствовать действиям модераторов по поддержанию порядка.', punish: 'Пред / Мут', duration: 'Предупреждение; до 6 часов; до 24 часов при повторении.' },
+      { id: '4.3', rule: 'Запрещено намеренно предоставлять поддельные доказательства и заведомо ложную информацию.', punish: 'Пред / Мут', duration: 'Предупреждение; до 6 часов; до 24 часов при повторении.' },
+      { id: '4.4', rule: 'Запрещено использовать обращения в поддержку для спама, провокаций и намеренного отвлечения персонала.', punish: 'Пред / Ограничение обращений', duration: 'Предупреждение; до 24 часов; до 7 дней при повторении.' },
+      { id: '4.5', rule: 'Запрещено разглашать конфиденциальные сведения администрации и закрытые материалы без разрешения.', punish: 'Снятие доступа / Бан', duration: 'До 7 дней; навсегда в зависимости от тяжести нарушения.' },
+    ],
+  },
+  5: {
+    title: 'РАЗДЕЛ V. ОБЩАЯ СИСТЕМА НАКАЗАНИЙ',
+    icon: '⚖️',
+    desc: 'Администрация выбирает меру с учётом тяжести нарушения, обстоятельств, намерения и истории участника.',
+    points: [
+      { id: '5.1', rule: 'Предупреждение (Warn) — фиксация нарушения и уведомление участника.', punish: 'Предупреждение', duration: 'Без срока; учитывается при повторных нарушениях.' },
+      { id: '5.2', rule: 'Мут (Timeout) — временное ограничение возможности писать и общаться в голосовых каналах.', punish: 'Мут', duration: 'От 1 часа до 24 часов; конкретный срок определяется пунктом правил.' },
+      { id: '5.3', rule: 'Кик (Kick) — удаление участника с сервера без постоянной блокировки возможности вернуться.', punish: 'Кик', duration: 'Однократно; повторное вступление возможно, если нет бана.' },
+      { id: '5.4', rule: 'Временный бан — ограничение доступа к серверу на установленный срок.', punish: 'Бан', duration: 'От 3 до 30 дней, если конкретный пункт не устанавливает другой срок.' },
+      { id: '5.5', rule: 'Перманентный бан — бессрочное ограничение доступа к серверу за особо тяжёлые нарушения.', punish: 'Перманентный бан', duration: 'Навсегда.' },
+      { id: '5.6', rule: 'При повторных нарушениях наказание может быть увеличено. За особо тяжёлые нарушения допускается немедленная строгая мера.', punish: 'На усмотрение администрации', duration: 'В пределах мер, указанных в правилах; с учётом обстоятельств и соразмерности.' },
+      { id: '5.7', rule: 'Участник может обжаловать наказание через официальную поддержку сервера.', punish: 'Наказание за подачу жалобы не применяется', duration: 'Обращение рассматривается администрацией.' },
+      { id: '5.8', rule: 'Один и тот же случай не должен автоматически наказываться несколько раз без дополнительных оснований.', punish: 'По решению администрации', duration: 'По обстоятельствам конкретного случая.' },
+    ],
+  },
 };
 
-function buildEmbeds(sectionId) {
+function buildSectionEmbeds(sectionId) {
   const data = RULES[sectionId];
   if (!data) return [];
 
-  const embeds = [];
-  let currentEmbed = createEmbed(data, false);
-  let fieldCount = 0;
-  let textLength = (data.title.length + data.desc.length + 100);
+  const chunks = [];
+  let current = [];
+  let currentLength = data.title.length + data.desc.length + 150;
 
   for (const point of data.points) {
-    const fields = [
-      { name: `\u200b\n🔹 **${point.name}**`, value: `\`\`\`\n${point.rule}\n\`\`\`` },
-      { name: 'Наказание:', value: `> **${point.punish}**`, inline: true },
-      { name: 'Длительность:', value: `> **${point.duration}**`, inline: true },
-      { name: '\u200b', value: '\u200b', inline: true }
-    ];
-    const addedLength = fields.reduce((sum, field) => sum + field.name.length + field.value.length, 0);
-    if (fieldCount + fields.length > 25 || textLength + addedLength > 5800) {
-      embeds.push(currentEmbed);
-      currentEmbed = createEmbed(data, true);
-      fieldCount = 0;
-      textLength = data.title.length + 100;
+    const value = [
+      point.rule,
+      '',
+      \`**Наказание:** \${point.punish}\`,
+      \`**Срок:** \${point.duration}\`,
+    ].join('\\n');
+    const field = { name: \`Пункт \${point.id}\`, value: value.slice(0, 1024) };
+    const fieldLength = field.name.length + field.value.length;
+    if (current.length >= 20 || currentLength + fieldLength > 5600) {
+      chunks.push(current);
+      current = [];
+      currentLength = 200;
     }
-    currentEmbed.addFields(fields);
-    fieldCount += fields.length;
-    textLength += addedLength;
+    current.push(field);
+    currentLength += fieldLength;
   }
-  embeds.push(currentEmbed);
-  return embeds;
+  if (current.length) chunks.push(current);
+
+  return chunks.map((fields, index) => {
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle(\`\${data.icon} \${data.title}\`)
+      .addFields(fields);
+    if (index === 0) embed.setDescription(data.desc);
+    else embed.setFooter({ text: 'Продолжение раздела' });
+    if (index === chunks.length - 1) embed.setFooter({ text: 'HERADE HOUSE 2.0 • Соблюдайте правила сообщества' });
+    return embed;
+  });
 }
 
-function createEmbed(data, continuation) {
-  const embed = new EmbedBuilder()
-    .setColor(0x2b2d31)
-    .setAuthor({ name: 'Правила | HERADE HOUSE 2.0', iconURL: client.user?.displayAvatarURL() })
-    .setTitle(`${data.icon} ${data.title}`);
-  if (!continuation) embed.setDescription(`**${data.desc}**`);
-  else embed.setFooter({ text: 'Продолжение раздела' });
-  return embed;
+function isPublisher(member) {
+  const permissions = member.permissions;
+  return permissions.has(PermissionsBitField.Flags.Administrator) ||
+    permissions.has(PermissionsBitField.Flags.ManageGuild) ||
+    allowedRoleIds.some(roleId => member.roles.cache.has(roleId));
+}
+
+function canSendEmbeds(channel, guild) {
+  const me = guild.members.me;
+  if (!me) return false;
+  const permissions = channel.permissionsFor(me);
+  return Boolean(permissions?.has([
+    PermissionsBitField.Flags.ViewChannel,
+    PermissionsBitField.Flags.SendMessages,
+    PermissionsBitField.Flags.EmbedLinks,
+  ]));
 }
 
 client.once('clientReady', () => {
-  console.log(`✅ Бот ${client.user.tag} запущен`);
+  console.log(\`✅ Бот \${client.user.tag} запущен\`);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -112,40 +165,61 @@ client.on('interactionCreate', async interaction => {
       return;
     }
 
+    const action = interaction.options.getSubcommand();
     const member = await interaction.guild.members.fetch(interaction.user.id);
-    // An empty ALLOWED_ROLE_IDS means the command is available to everyone.
-    const hasRole = allowedRoleIds.length === 0 || member.roles.cache.some(role => allowedRoleIds.includes(role.id));
-    if (!hasRole) {
-      await interaction.reply({ content: '⛔ У вас нет прав для использования этой команды.', ephemeral: true });
+
+    if (action === 'view') {
+      const sectionId = interaction.options.getInteger('section');
+      const embeds = buildSectionEmbeds(sectionId);
+      if (!embeds.length) {
+        await interaction.reply({ content: 'Раздел не найден.', ephemeral: true });
+        return;
+      }
+      await interaction.reply({ embeds, ephemeral: true });
       return;
     }
 
-    const channel = interaction.channel;
-    if (!channel || !channel.isTextBased() || !channel.send) {
-      await interaction.reply({ content: '❌ Не удалось определить текстовый канал для публикации.', ephemeral: true });
+    if (!isPublisher(member)) {
+      await interaction.reply({
+        content: '⛔ Публиковать правила могут только участники с правом «Управление сервером», администраторы или разрешённой ролью.',
+        ephemeral: true,
+      });
       return;
     }
 
-    const botMember = interaction.guild.members.me;
-    if (!botMember || !channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.SendMessages) ||
-        !channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.EmbedLinks)) {
-      await interaction.reply({ content: '❌ У бота нет прав отправлять сообщения и Embed в этом канале.', ephemeral: true });
+    const target = interaction.options.getChannel('channel');
+    if (!target || target.type !== ChannelType.GuildText || !canSendEmbeds(target, interaction.guild)) {
+      await interaction.reply({
+        content: '❌ Выбранный канал недоступен или у бота нет прав «Просмотр канала», «Отправка сообщений» и «Встраивание ссылок».',
+        ephemeral: true,
+      });
       return;
     }
 
-    const section = interaction.options.getInteger('глава');
-    const embeds = buildEmbeds(section);
-    if (!embeds.length) {
-      await interaction.reply({ content: '❌ Раздел не найден.', ephemeral: true });
+    const sectionIds = action === 'publish-all'
+      ? Object.keys(RULES).map(Number)
+      : [interaction.options.getInteger('section')];
+
+    if (sectionIds.some(id => !RULES[id])) {
+      await interaction.reply({ content: '❌ Указан неизвестный раздел.', ephemeral: true });
       return;
     }
 
+    const allEmbeds = sectionIds.flatMap(buildSectionEmbeds);
     await interaction.deferReply({ ephemeral: true });
-    for (const embed of embeds) await channel.send({ embeds: [embed] });
-    await interaction.deleteReply().catch(() => {});
+
+    let sent = 0;
+    for (const embed of allEmbeds) {
+      await target.send({ embeds: [embed] });
+      sent += 1;
+    }
+
+    await interaction.editReply({
+      content: \`✅ Опубликовано: \${sectionIds.length} раздел(а/ов), \${sent} сообщени(я/й) в канале <#\${target.id}>.\`,
+    });
   } catch (error) {
     console.error('Ошибка обработки /rules:', error);
-    const message = '❌ Не удалось опубликовать правила. Проверьте права бота и логи.';
+    const message = '❌ Не удалось обработать команду. Проверьте права бота и логи.';
     if (interaction.deferred || interaction.replied) {
       await interaction.followUp({ content: message, ephemeral: true }).catch(() => {});
     } else {
