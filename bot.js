@@ -9,7 +9,7 @@ const {
 
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
-  if (!value) throw new Error(\`Missing required environment variable: \${name}\`);
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
 }
 
@@ -107,10 +107,10 @@ function buildSectionEmbeds(sectionId) {
     const value = [
       point.rule,
       '',
-      \`**Наказание:** \${point.punish}\`,
-      \`**Срок:** \${point.duration}\`,
+      `**Наказание:** ${point.punish}`,
+      `**Срок:** ${point.duration}`,
     ].join('\\n');
-    const field = { name: \`Пункт \${point.id}\`, value: value.slice(0, 1024) };
+    const field = { name: `Пункт ${point.id}`, value: value.slice(0, 1024) };
     const fieldLength = field.name.length + field.value.length;
     if (current.length >= 20 || currentLength + fieldLength > 5600) {
       chunks.push(current);
@@ -125,7 +125,7 @@ function buildSectionEmbeds(sectionId) {
   return chunks.map((fields, index) => {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setTitle(\`\${data.icon} \${data.title}\`)
+      .setTitle(`${data.icon} ${data.title}`)
       .addFields(fields);
     if (index === 0) embed.setDescription(data.desc);
     else embed.setFooter({ text: 'Продолжение раздела' });
@@ -153,7 +153,7 @@ function canSendEmbeds(channel, guild) {
 }
 
 client.once('clientReady', () => {
-  console.log(\`✅ Бот \${client.user.tag} запущен\`);
+  console.log(`✅ Бот ${client.user.tag} запущен`);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -215,7 +215,7 @@ client.on('interactionCreate', async interaction => {
     }
 
     await interaction.editReply({
-      content: \`✅ Опубликовано: \${sectionIds.length} раздел(а/ов), \${sent} сообщени(я/й) в канале <#\${target.id}>.\`,
+      content: `✅ Опубликовано: ${sectionIds.length} раздел(а/ов), ${sent} сообщени(я/й) в канале <#${target.id}>.`,
     });
   } catch (error) {
     console.error('Ошибка обработки /rules:', error);
