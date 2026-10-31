@@ -113,7 +113,8 @@ client.on('interactionCreate', async interaction => {
     }
 
     const member = await interaction.guild.members.fetch(interaction.user.id);
-    const hasRole = allowedRoleIds.length > 0 && member.roles.cache.some(role => allowedRoleIds.includes(role.id));
+    // An empty ALLOWED_ROLE_IDS means the command is available to everyone.
+    const hasRole = allowedRoleIds.length === 0 || member.roles.cache.some(role => allowedRoleIds.includes(role.id));
     if (!hasRole) {
       await interaction.reply({ content: '⛔ У вас нет прав для использования этой команды.', ephemeral: true });
       return;
